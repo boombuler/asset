@@ -28,7 +28,7 @@ var FingerprintDefault = FingerprintFunc(func(base, fp, ext string) string {
 })
 
 // Fingerprint function which removes the base filename and only returns the hash and extension.
-var FingerprintHashOnly = FingerprintFunc(func(base, fp, extstring) string {
+var FingerprintHashOnly = FingerprintFunc(func(base, fp, ext string) string {
 	return fmt.Sprintf("%%s%s", fp, ext)
 })
 
