@@ -1,7 +1,9 @@
 package asset
 
 import (
+	"bytes"
 	"io"
+	"io/ioutil"
 	"path/filepath"
 )
 
@@ -56,14 +58,17 @@ func (mr *multiReadCloser) Close() error {
 func (m mergedAsset) GetName() string {
 	result := ""
 	for i, a := range m {
-		fn := a.GetName()
+		_, isConst := a.(constAsset)
+		if !isConst {
+			fn := a.GetName()
 
-		if i > 0 {
-			ext := filepath.Ext(fn)
-			fn = fn[0 : len(fn)-len(ext)]
-			result = fn + "_" + result
-		} else {
-			result = fn
+			if i > 0 {
+				ext := filepath.Ext(fn)
+				fn = fn[0 : len(fn)-len(ext)]
+				result = fn + "_" + result
+			} else {
+				result = fn
+			}
 		}
 	}
 	return result
@@ -75,16 +80,32 @@ func (m mergedAsset) GetContent() (io.ReadCloser, error) {
 	return &multiReadCloser{r, nil}, nil
 }
 
+type constAsset string
+
+func (c constAsset) GetName() string {
+	return ""
+}
+
+func (c constAsset) GetContent() (io.ReadCloser, error) {
+	return ioutil.NopCloser(bytes.NewBufferString(string(c))), nil
+}
+
 // Create a merge pipeliner. which combines multiple files into one.
-func Merge() Pipeliner {
+func Merge(separator string) Pipeliner {
+	sep := constAsset(separator)
 	return PipeFunc(func(input <-chan Asset) <-chan Asset {
 		result := make(chan Asset)
 		go func() {
 			ma := make(mergedAsset, 0)
 			for a := range input {
+				if len(ma) > 0 {
+					ma = append(ma, sep)
+				}
 				ma = append(ma, a)
 			}
-			result <- ma
+			if len(ma) > 0 {
+				result <- ma
+			}
 			close(result)
 		}()
 		return result

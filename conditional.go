@@ -10,16 +10,16 @@ func If(condition func(Asset) bool, pipes ...Pipeliner) Pipeliner {
 		result := make(chan Asset)
 
 		pipeIn := make(chan Asset, 1)
-		go func() {
-			var pipeOut <-chan Asset = pipeIn
+		go func(in <-chan Asset) {
 			for _, p := range pipes {
-				pipeOut = p.Pipe(pipeOut)
+				in = p.Pipe(in)
 			}
-			for a := range pipeOut {
+
+			for a := range in {
 				result <- a
 			}
 			close(result)
-		}()
+		}(pipeIn)
 
 		go func() {
 			for asset := range input {
